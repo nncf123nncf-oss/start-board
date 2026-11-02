@@ -494,7 +494,7 @@ var SBUI = (function () {
     }
     bt.push(h('button', { type: 'button', text: st.done ? '閉じる' : 'やめる', onclick: function () { openState = null; renderGroups(); } }));
     box.appendChild(h('div', { class: 'btns' }, bt));
-    if (st.blocked && !st.done) box.appendChild(h('p', { class: 'small', text: 'パソコンのChromeでは、アドレスバーの右に出る印から「ポップアップとリダイレクトを常に許可」を選ぶと、次から一度に開けます。' }));
+    if (st.blocked && !st.done) box.appendChild(h('p', { class: 'small', text: 'ブラウザの設定で、このページのポップアップを許可すると、次から続けて開けることがあります（パソコンのChromeでは、アドレスバーに出る印から許可できます）。' }));
     return box;
   }
 
@@ -643,17 +643,19 @@ var SBUI = (function () {
   // 新しい日のメモにする。typing=false（時計・画面に戻ったとき）は、打ちかけの分を前の日に保存してから切り替える。
   // typing=true（日付が変わってから打ったとき）は前の日に書き足さず、前の日に保存済みの文より後ろに打った分だけを新しい日へ移す
   function switchDay(saveOld, typing) {
-    var carry = '';
+    var carry = '', dropped = false;
     if (typing) {
       if (memoTimer) { clearTimeout(memoTimer); memoTimer = null; }
       var old = store.memos[memoDay] || '', cur = memoTa.value;
       carry = cur.indexOf(old) === 0 ? cur.slice(old.length).replace(/^\n+/, '') : '';
+      dropped = cur !== old && cur.indexOf(old) !== 0; // 前の日の文の途中を書き換えていた分は、どちらの日にも入れない
     } else if (saveOld) saveMemoNow();
     memoDay = SB.today();
     memoTa.value = (store.memos[memoDay] || '') + carry;
     memoDateEl.textContent = SB.mdJa(memoDay);
     memoStatus.className = 'small';
-    memoStatus.textContent = '日付が変わったので、新しい日のメモにしました。前の日のメモは「前の日のメモ」に残っています。';
+    memoStatus.textContent = '日付が変わったので、新しい日のメモにしました。前の日のメモは「前の日のメモ」に残っています。' +
+      (dropped ? '日付が変わってから前の日のメモの途中を書き換えた分は、反映していません。' : '');
     renderPast();
     fitHeight(memoTa);
     if (carry) memoTimer = setTimeout(saveMemoNow, 500);
@@ -683,7 +685,7 @@ var SBUI = (function () {
   var openPast = Object.create(null);
   function renderPast() {
     pastEl.textContent = '';
-    pastEl.appendChild(h('div', { class: 'sec-h' }, [h('h2', { text: '前の日のメモ' }), h('span', { class: 'small', text: '新しい30日分まで' })]));
+    pastEl.appendChild(h('div', { class: 'sec-h' }, [h('h2', { text: '前の日のメモ' }), h('span', { class: 'small', text: '今日を含めて30日分まで' })]));
     var ds = SB.pastDates(store, memoDay);
     // 消える前に知らせる: 30日分たまっていて今日のメモがまだないとき、今日のメモを保存するといちばん古い日が消える
     if (memoWarn) {

@@ -3,9 +3,9 @@ const fs = require('fs'), path = require('path'), cp = require('child_process'),
 const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(p => fs.existsSync(p));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const getJson = u => new Promise((res, rej) => http.get(u, r => { let d = ''; r.on('data', c => d += c); r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { rej(e); } }); }).on('error', rej));
-async function launch(port) {
+async function launch(port, extra) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-cdp-'));
-  const chrome = cp.spawn(CHROME, ['--headless=new', '--remote-debugging-port=' + port, '--user-data-dir=' + path.join(tmp, 'prof'), '--no-first-run', '--disable-gpu', 'about:blank'], { stdio: 'ignore' });
+  const chrome = cp.spawn(CHROME, ['--headless=new', '--remote-debugging-port=' + port, '--user-data-dir=' + path.join(tmp, 'prof'), '--no-first-run', '--disable-gpu'].concat(extra || [], ['about:blank']), { stdio: 'ignore' });
   let t; for (let i = 0; i < 50; i++) { try { t = await getJson('http://127.0.0.1:' + port + '/json'); if (t.length) break; } catch (e) { } await sleep(200); }
   const ws = new WebSocket(t.find(x => x.type === 'page').webSocketDebuggerUrl); await new Promise(r => ws.addEventListener('open', r));
   let id = 0; const pend = {}; const handlers = [];

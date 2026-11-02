@@ -7,7 +7,8 @@ const OUT = path.resolve(process.argv[2] || 'check-out');
 fs.mkdirSync(OUT, { recursive: true });
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'));
 const PORT = 8788, ORIGIN = 'http://127.0.0.1:' + PORT + '/';
-const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); r.end(HTML); }).listen(PORT);
+const refs = []; // ?t= を開いたときの HTTP の Referer ヘッダ（無ければ空）
+const srv = http.createServer((q, r) => { if (q.url.indexOf('?t=') >= 0) refs.push(q.url + ' ' + (q.headers.referer || '')); r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); r.end(HTML); }).listen(PORT);
 let ng = 0;
 const ok = (name, cond, info) => { if (!cond) ng++; console.log((cond ? 'OK ' : 'NG ') + name + (info !== undefined && !cond ? ' ' + JSON.stringify(info) : '')); };
 const KEY = 'start-board-v1';
@@ -27,8 +28,8 @@ const stored = `JSON.parse(localStorage.getItem('${KEY}')||'null')`;
 
 
 // 別のタブで式を評価する（DevToolsの一覧からタブを探して、そのタブにつなぐ）
-async function evalInTab(prefix, expr) {
-  const list = await new Promise((res, rej) => http.get('http://127.0.0.1:9441/json', r => { let d = ''; r.on('data', c => d += c); r.on('end', () => res(JSON.parse(d))); }).on('error', rej));
+async function evalInTab(prefix, expr, port) {
+  const list = await new Promise((res, rej) => http.get('http://127.0.0.1:' + (port || 9441) + '/json', r => { let d = ''; r.on('data', c => d += c); r.on('end', () => res(JSON.parse(d))); }).on('error', rej));
   const t = list.find(x => x.type === 'page' && x.url.startsWith(prefix));
   if (!t) return null;
   const ws = new WebSocket(t.webSocketDebuggerUrl); await new Promise(r => ws.addEventListener('open', r));
@@ -66,7 +67,7 @@ async function evalInTab(prefix, expr) {
   await b.ev(clickIn('.group:nth-of-type(1)', 'まとめて開く（5）')); await b.sleep(60);
   ok('S4 blocked msg', /ブラウザが2つ目から止めました（1\/5を開きました）/.test(await b.ev(`document.querySelector('.openbox').innerText`)), await b.ev(`document.querySelector('.openbox')&&document.querySelector('.openbox').innerText`));
   ok('S4 next button', !!(await b.ev(`!!${btn('次を開く（2/5 Googleカレンダー）')}`)));
-  ok('S4 popup hint', /ポップアップとリダイレクトを常に許可/.test(await b.ev(`document.querySelector('.openbox').innerText`)));
+  ok('S4 popup hint', /このページのポップアップを許可すると、次から続けて開けることがあります/.test(await b.ev(`document.querySelector('.openbox').innerText`)));
   m = await b.ev(measure); ok('S4 openbox 375 no overflow', m.sw <= 375 && !m.over.length, m);
   await b.ev(`window.__allow=99`);
   for (let i = 0; i < 4; i++) { await b.ev(`(()=>{const x=[...document.querySelectorAll('.openbox button.primary')][0];x.click()})()`); await b.sleep(30); }
@@ -95,6 +96,7 @@ async function evalInTab(prefix, expr) {
   await b.sleep(1200);
   const opened2 = await evalInTab(ORIGIN + '?t=2', `String(window.opener===null)`);
   ok('S4 real: next opens the 2nd with no opener', opened2 === 'true' && /2\/3を開きました/.test(await b.ev(`document.querySelector('.openbox').innerText`)), opened2);
+  ok('S4 real: no HTTP Referer header', refs.length >= 2 && refs.every(x => / $/.test(x)), refs);
   for (const t of (await b.send('Target.getTargets')).result.targetInfos.filter(t => t.type === 'page' && t.url.indexOf('?t=') >= 0)) await b.send('Target.closeTarget', { targetId: t.targetId });
   await b.ev(`localStorage.clear()`); await reopen(); await b.ev(click('サンプルを入れる'));
 
@@ -307,7 +309,25 @@ async function evalInTab(prefix, expr) {
   ok('no external requests', ext.length === 0, ext.slice(0, 5));
   ok('no exceptions', errs.length === 0, errs.slice(0, 3));
 
-  b.close(); srv.close();
+
+  // ポップアップを止めない設定のChrome（--disable-popup-blocking）で、本物のクリック1回で3つとも続けて開くか。
+  // 本人がポップアップを許可したときの代わりの確認（実際の許可の画面・文言は確かめていない）
+  b.close();
+  const b2 = await launch(9445, ['--disable-popup-blocking']);
+  await b2.open(ORIGIN, 1000, 900, 1, false, 'light');
+  await b2.ev(`localStorage.setItem('${KEY}',JSON.stringify({v:1,groups:[{id:'g1',name:'ここ',links:[{id:'l1',name:'一',url:'${ORIGIN}?t=a'},{id:'l2',name:'二',url:'${ORIGIN}?t=b'},{id:'l3',name:'三',url:'${ORIGIN}?t=c'}]}],memos:{}}))`);
+  await b2.send('Page.navigate', { url: 'about:blank' }); await b2.sleep(100); await b2.open(ORIGIN, 1000, 900, 1, false, 'light');
+  const r2 = await b2.ev(`(()=>{const x=document.querySelector('.g-head button').getBoundingClientRect();return {x:x.x+x.width/2,y:x.y+x.height/2}})()`);
+  await b2.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r2.x, y: r2.y, button: 'left', clickCount: 1 });
+  await b2.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r2.x, y: r2.y, button: 'left', clickCount: 1 });
+  await b2.sleep(1500);
+  const msg2 = await b2.ev(`(document.querySelector('.openbox')||{innerText:''}).innerText.split(String.fromCharCode(10))[0]`);
+  console.log('   ポップアップを止めないChromeで本物のクリック1回:', msg2);
+  const ops = [];
+  for (const t of ['a', 'b', 'c']) ops.push(await evalInTab(ORIGIN + '?t=' + t, `String(window.opener===null)`, 9445));
+  ok('S4 real (popups allowed): all 3 opened, no opener', /3つすべて開きました/.test(msg2) && ops.join() === 'true,true,true', { msg2, ops });
+  b2.close();
+  srv.close();
   console.log(ng ? '\nNG ' + ng + '件' : '\nすべてOK');
   process.exit(ng ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
