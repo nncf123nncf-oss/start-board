@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>仕事をはじめる1画面</title>
+<meta name="description" content="よく使うツールのリンクを用途ごとにまとめてボタンで並べ、まとまりごとに続けて開けます。同じ画面に日付ごとの「今日のメモ」。ログインなし。リンクとメモは、この端末のブラウザにだけ保存します。">
+<style>
+  :root {
+    --bg: #f4f7f9; --surface: #ffffff; --ink: #14202a; --ink2: #33434f; --ink3: #4d5d69;
+    --line: #d3dde4; --line-strong: #657784; --accent: #2b4a5e; --accent-ink: #ffffff; --accent-soft: #e6eef3;
+    --danger: #a8231b; --danger-soft: #fbe9e7; --notice: #eaf0f4;
+    --font: "Hiragino Sans","Yu Gothic","BIZ UDPGothic","Noto Sans JP",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f151a; --surface: #182129; --ink: #eaf2f7; --ink2: #cbd8e1; --ink3: #adbcc7;
+      --line: #2b3843; --line-strong: #7f929f; --accent: #9ec3d9; --accent-ink: #0f1d26; --accent-soft: #22323d;
+      --danger: #ff9a92; --danger-soft: #3a1f1c; --notice: #1c2730;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.6; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px 16px 32px; }
+  h1 { font-size: 22px; line-height: 1.3; margin: 8px 0 8px; overflow-wrap: anywhere; }
+  h2 { font-size: 18px; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
+  h3 { font-size: 17px; line-height: 1.4; margin: 0; overflow-wrap: anywhere; min-width: 0; }
+  p { margin: 0 0 10px; }
+  .lead { color: var(--ink2); }
+  .notes { margin: 0 0 14px; padding-left: 1.2em; color: var(--ink2); font-size: 15px; }
+  .notes li { margin-bottom: 2px; }
+  .small { font-size: 14px; color: var(--ink3); }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 14px; min-width: 0; }
+  label.f, .f { display: block; font-weight: 600; margin: 0 0 4px; }
+  .hint { font-weight: 400; color: var(--ink3); font-size: 14px; }
+  input[type=text], input[type=url], textarea {
+    display: block; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 6px; padding: 8px 10px; margin: 0 0 10px; -webkit-appearance: none; appearance: none; }
+  textarea { resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button { font: inherit; font-size: 16px; min-height: 44px; min-width: 44px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+  .errors { border: 2px solid var(--danger); background: var(--danger-soft); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; color: var(--ink); }
+  .errors ul { margin: 4px 0 0; padding-left: 1.2em; }
+  .okmsg { color: var(--ink2); font-weight: 600; overflow-wrap: anywhere; }
+  .okmsg.errtext { color: var(--danger); }
+  .danger-btn { color: var(--danger); border-color: var(--danger); }
+  .notice { background: var(--notice); border: 1px solid var(--line-strong); border-left: 6px solid var(--accent); border-radius: 6px; padding: 10px 12px; margin: 0 0 14px; font-size: 15px; color: var(--ink2); overflow-wrap: anywhere; }
+  .sec-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+  .ask-box { border: 2px solid var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; margin: 8px 0 12px; }
+  .ask-box p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; }
+  /* 日付と時刻 */
+  .clock { padding: 12px 14px; }
+  .clock .cd { font-size: 17px; font-weight: 700; color: var(--ink2); margin: 0; }
+  .clock .ct { font-size: 34px; font-weight: 800; line-height: 1.2; margin: 0; font-variant-numeric: tabular-nums; }
+  /* リンクのまとまり */
+  .group { border-top: 1px solid var(--line); padding: 12px 0 4px; }
+  .group:first-of-type { border-top: 0; padding-top: 2px; }
+  .g-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+  .g-head .gc { font-weight: 400; font-size: 14px; color: var(--ink3); }
+  .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 10px; }
+  a.lk { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
+    background: var(--surface); color: var(--ink); text-decoration: none; min-width: 0; }
+  a.lk:hover { background: var(--accent-soft); }
+  a.lk .ln { min-width: 0; overflow-wrap: anywhere; line-height: 1.35; font-weight: 700; font-size: 15px; }
+  .ic { flex: none; width: 32px; height: 32px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center;
+    color: #ffffff; font-weight: 800; font-size: 16px; line-height: 1; }
+  .c0 { background: #2b4a5e; } .c1 { background: #8a3b2e; } .c2 { background: #3e6b3a; }
+  .c3 { background: #6b4c9a; } .c4 { background: #7a5c12; } .c5 { background: #22636e; }
+  .openbox { border: 2px solid var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; margin: 0 0 10px; }
+  .openbox p { margin: 0 0 8px; overflow-wrap: anywhere; }
+  .openbox .btns { margin: 0; }
+  .openbox button.primary { max-width: 100%; overflow-wrap: anywhere; }
+  /* 編集 */
+  .elinks { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+  .elinks li, .g-tools { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+  .elinks .en { font-weight: 700; overflow-wrap: anywhere; }
+  .elinks .eu { font-size: 13px; color: var(--ink3); overflow-wrap: anywhere; margin: 0 0 6px; }
+  .g-tools { margin: 0 0 8px; background: var(--notice); }
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tools button { padding: 6px 10px; font-size: 15px; }
+  .addform { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 10px 10px 2px; margin: 0 0 10px; }
+  .addform .f { font-size: 15px; }
+  /* メモ */
+  textarea.memo { min-height: 96px; line-height: 1.6; }
+  .past { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .past li { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; min-width: 0; }
+  .past .pt { width: 100%; justify-content: flex-start; border: 0; background: none; padding: 6px 2px; text-align: left; gap: 8px; }
+  .past .pt b { flex: none; }
+  .past .pt span { min-width: 0; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .past pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 15px; margin: 4px 2px 8px; }
+  .codebox { font-size: 14px; word-break: break-all; overflow-wrap: anywhere; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .empty { color: var(--ink3); font-size: 15px; margin: 0 0 10px; }
+  .mw-footer { box-sizing: border-box; width: 100%; max-width: 100%; margin: 24px 0 0; padding: 16px; background: #F7F7F8;
+    border: 1px solid #D8D8DC; border-radius: 6px; color: #3A3A3E; font-family: system-ui, sans-serif; font-size: 12px; line-height: 1.7; }
+  .mw-footer p { margin: 0 0 6px; } .mw-footer p:last-child { margin-bottom: 0; } .mw-footer a { color: #0B5AA6; display: inline-block; padding: 13px 0; }
+  /* 375px: 日付と時刻 → 今日のメモ → まとまり → 前の日のメモ → 別の端末へ移す */
+  .layout { display: flex; flex-direction: column; }
+  .col { display: contents; }
+  .o-clock { order: 1; } .o-memo { order: 2; } .o-groups { order: 3; } .o-past { order: 4; } .o-move { order: 5; }
+  @media (min-width: 880px) {
+    .layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .col { display: block; min-width: 0; }
+    .links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div id="app"></div>
+  <footer class="mw-footer">
+    <p>みちAIワークス（MICHI AI WORKS）／代表 田中　泉</p>
+    <p>運営: <a href="https://michi-portfolio.vercel.app/" rel="noopener">みちAIワークス 公式サイト</a>（https://michi-portfolio.vercel.app/ ）／ お問い合わせ: <a href="mailto:nncf123nncf@gmail.com">nncf123nncf@gmail.com</a></p>
+    <p>登録したリンクとメモは、お使いの端末のブラウザにだけ保存します。リンクの先のサイトは、それぞれの運営者のものです。当サイトはリンク先の内容を確認していません。アクセス解析（Cloudflare Web Analytics）で、ページの閲覧状況（閲覧数・参照元・ブラウザの種類など）を計測しています。</p>
+    <p>ログイン・会員登録・パスワードの入力を求めることはありません。</p>
+  </footer>
+</main>
+
+<script id="core">
+var SB = (function () {
+  var KEY = 'start-board-v1';
+  // code: 移す文字の上限。リンク72個×アドレス2,000文字でも収まる長さにする（作った文字を自分で読めないことがないように）
+  var LIM = { groups: 6, gname: 12, links: 12, lname: 16, url: 2000, memo: 2000, days: 30, code: 300000 };
+
+  // 向きを変える文字・見えない文字（書式文字 Cf）とハングルのフィラーは落とす（Day085〜087と同じ）
+  // 絵文字をつなぐ文字（ZWJ）と、旗の絵文字に使うタグ文字（U+E0020〜E007F）は残す
+  var RE_INVISIBLE = new RegExp('(?![' + String.fromCharCode(0x200d) + String.fromCodePoint(0xe0020) + '-' + String.fromCodePoint(0xe007f) + '])[\\p{Cf}' + String.fromCharCode(0x3164, 0x115f, 0x1160, 0xffa0) + ']', 'gu');
+  // 移す文字の途中に挟まりやすい見えない文字（ゼロ幅スペースなど）
+  var RE_ZERO_WIDTH = new RegExp('[' + String.fromCharCode(0x200b, 0x200c, 0x200d, 0x2060, 0xfeff) + ']', 'g');
+  function clean(s) { return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(RE_INVISIBLE, '').replace(/\s+/g, ' ').trim(); }
+  // メモは改行を残す（タブなど改行以外の制御文字は空白に）
+  function cleanMemo(s) { return String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u2028\u2029]/g, ' ').replace(RE_INVISIBLE, '').replace(/^\s+$/, ''); }
+  function cpLen(s) { return Array.from(s).length; }
+
+  /* ---- 日付・時刻（端末のローカル時刻。検算のときだけ SB.now に Date を入れて差し替える） ---- */
+  var WD = ['日', '月', '火', '水', '木', '金', '土'];
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function nowDate() { return api.now instanceof Date ? new Date(api.now.getTime()) : new Date(); }
+  function today() { var d = nowDate(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function validDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s); if (!m) return false;
+    var y = +m[1], mo = +m[2], d = +m[3]; if (y < 2000 || y > 2099) return false;
+    var dt = new Date(Date.UTC(y, mo - 1, d));
+    return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+  }
+  function dateJa(s) {
+    if (!validDate(s)) return '';
+    var p = s.split('-').map(Number), w = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay();
+    return p[0] + '年' + p[1] + '月' + p[2] + '日（' + WD[w] + '）';
+  }
+  function mdJa(s) { if (!validDate(s)) return ''; var p = s.split('-').map(Number), w = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay(); return p[1] + '/' + p[2] + '（' + WD[w] + '）'; }
+  function timeText(d) { d = d || nowDate(); return d.getHours() + ':' + pad2(d.getMinutes()); }
+
+  /* ---- 名前とURL ---- */
+  function checkName(v, max, label, errs) {
+    var t = clean(v);
+    if (!t) errs.push(label + 'を入れてください');
+    else if (cpLen(t) > max) errs.push(label + 'は' + max + '字までです（いま' + cpLen(t) + '字）');
+    return t;
+  }
+  // http/https のアドレスだけを通す。https:// が抜けていたら付けた形を返す（added）
+  var URL_ERR = {
+    empty: 'アドレスを入れてください',
+    space: 'アドレスの途中に空白があります',
+    scheme: 'http または https で始まるアドレスを入れてください',
+    invalid: 'アドレスとして読み取れませんでした',
+    cred: 'ユーザー名やパスワードを含むアドレスは登録できません',
+    long: 'アドレスは2,000文字までです（日本語の入ったアドレスは、文字数が長く数えられます）',
+    mail: 'メールアドレスではなく、サイトのアドレス（https:// で始まるもの）を入れてください'
+  };
+  function normUrl(s) {
+    var t = String(s == null ? '' : s).replace(RE_INVISIBLE, '').replace(RE_ZERO_WIDTH, '').trim();
+    if (!t) return { error: 'empty' };
+    if (t.length > LIM.url) return { error: 'long' };
+    if (/\s/.test(t)) return { error: 'space' };
+    var added = false, m = /^([a-z][a-z0-9+.\-]*):/i.exec(t);
+    if (!m || m[1].indexOf('.') >= 0) {
+      if (/^[^\/?#]*@/.test(t)) return { error: 'mail' };
+      if (/^\/\//.test(t)) t = 'https:' + t; else t = 'https://' + t;
+      added = true;
+    }
+    var u;
+    try { u = new URL(t); } catch (e) { return { error: added ? 'invalid' : 'scheme' }; }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return { error: 'scheme' };
+    if (u.username || u.password) return { error: 'cred' };
+    if (!u.hostname || (added && u.hostname.indexOf('.') < 0)) return { error: 'invalid' };
+    if (u.href.length > LIM.url) return { error: 'long' };
+    return { url: u.href, added: added };
+  }
+  // 保存済み・移す文字の中のURL（すでに整った形だけを通す）
+  function isCleanUrl(v) { if (typeof v !== 'string') return false; var r = normUrl(v); return !r.error && !r.added && r.url === v; }
+  function isName(v, max) { return typeof v === 'string' && v.length > 0 && v === clean(v) && cpLen(v) <= max; }
+  // ボタンの頭文字（1文字。英字は大文字）
+  function initial(name) {
+    var s = clean(name), g = '';
+    try { if (typeof Intl !== 'undefined' && Intl.Segmenter) { var it = new Intl.Segmenter('ja', { granularity: 'grapheme' }).segment(s)[Symbol.iterator]().next(); g = it.done ? '' : it.value.segment; } } catch (e) { g = ''; }
+    if (!g) g = Array.from(s)[0] || '?';
+    return g.toUpperCase();
+  }
+
+  /* ---- 端末への保存 ---- */
+  function newId(p) { return (p || 'x') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function emptyStore() { return { v: 1, groups: [], memos: {} }; }
+  function groupFrom(name, links) { return { id: newId('g'), name: name, links: links.map(function (l) { return { id: newId('l'), name: l[0], url: l[1] }; }) }; }
+  // 新しい30日分だけ残す。消した日付を返す
+  function pruneMemos(memos) {
+    var ks = Object.keys(memos).sort().reverse(), removed = [];
+    for (var i = LIM.days; i < ks.length; i++) { removed.push(ks[i]); delete memos[ks[i]]; }
+    return removed.sort();
+  }
+  // 端末に残っていた形を確かめる。読めたものだけを返し、読めなかった数も返す
+  function sanitizeStore(o) {
+    if (!o || typeof o !== 'object' || !Array.isArray(o.groups)) return null;
+    var st = emptyStore(), ids = Object.create(null), dropped = 0;
+    function idOk(id, p) { var ok = typeof id === 'string' && /^[a-z0-9]{1,40}$/.test(id) && !ids[id]; var r = ok ? id : newId(p); ids[r] = 1; return r; }
+    o.groups.forEach(function (g) {
+      if (!g || typeof g !== 'object' || !isName(g.name, LIM.gname) || !Array.isArray(g.links) || st.groups.length >= LIM.groups) { dropped++; return; }
+      var ng = { id: idOk(g.id, 'g'), name: g.name, links: [] };
+      g.links.forEach(function (l) {
+        if (!l || typeof l !== 'object' || !isName(l.name, LIM.lname) || !isCleanUrl(l.url) || ng.links.length >= LIM.links) { dropped++; return; }
+        ng.links.push({ id: idOk(l.id, 'l'), name: l.name, url: l.url });
+      });
+      st.groups.push(ng);
+    });
+    if (o.memos && typeof o.memos === 'object' && !Array.isArray(o.memos)) {
+      Object.keys(o.memos).forEach(function (k) {
+        var v = o.memos[k];
+        if (!validDate(k) || typeof v !== 'string' || !v || cpLen(v) > LIM.memo || v !== cleanMemo(v)) { dropped++; return; }
+        st.memos[k] = v;
+      });
+    } else if (o.memos != null) dropped++;
+    dropped += pruneMemos(st.memos).length;
+    return { store: st, dropped: dropped };
+  }
+  // 今日のメモを入れる（空なら消す）。消えた古い日付を返す
+  function putMemo(st, date, text) {
+    var t = cleanMemo(text);
+    if (cpLen(t) > LIM.memo) return { error: 'メモは' + LIM.memo.toLocaleString('ja-JP') + '字までです（いま' + cpLen(t).toLocaleString('ja-JP') + '字）。保存されていません' };
+    if (t.replace(/\s/g, '') === '') delete st.memos[date]; else st.memos[date] = t;
+    return { removed: pruneMemos(st.memos) };
+  }
+  function pastDates(st, day) { return Object.keys(st.memos).filter(function (k) { return k !== day; }).sort().reverse(); }
+  function counts(groups) { var n = 0; groups.forEach(function (g) { n += g.links.length; }); return { g: groups.length, l: n }; }
+  function move(arr, i, d) { var j = i + d; if (i < 0 || j < 0 || j >= arr.length) return false; var x = arr[i]; arr[i] = arr[j]; arr[j] = x; return true; }
+
+  /* ---- 別の端末へ移す文字（英数字だけ。JSONのまま渡さない＝Day079の学び） ---- */
+  function b64urlEncode(str) {
+    var bytes = new TextEncoder().encode(str), bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function b64urlDecode(s) {
+    var b = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    var bin = atob(b), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  }
+  // 確かめ用の数字（中身から計算した6桁）
+  function checksum(s) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return ('00000' + (h % 1000000)).slice(-6);
+  }
+  function encodeMove(groups) {
+    var p = b64urlEncode(JSON.stringify([1, groups.map(function (g) { return [g.name, g.links.map(function (l) { return [l.name, l.url]; })]; })]));
+    return 'SB1.' + p + '.' + checksum(p);
+  }
+  var MOVE_ERR = {
+    empty: '文字を貼ってください',
+    notfound: '「SB1.」で始まる文字が見つかりませんでした。コピーした文字をそのまま貼ってください',
+    version: 'このページでは読めない形の文字です（SB1 ではありません）',
+    checksum: '文字の一部が変わっているようです（確かめ用の数字が合いません）。もう一度コピーして貼ってください',
+    broken: '文字が途中で切れているか、読み取れませんでした',
+    long: '文字が長すぎます',
+    content: '中身に、このページで扱えない名前やアドレスがありました'
+  };
+  function decodeMove(text) {
+    var t = String(text == null ? '' : text);
+    if (t.length > LIM.code * 2) return { error: 'long' };
+    // 全角になった英数字（ＳＢ１など）は半角に戻し、途中に挟まった見えない文字と空白・改行は取り除く。
+    // 中身の英数字はすべて ASCII なので、NFKC で変わるのは崩れた文字だけ（確かめ用の数字で誤読も止まる）
+    t = t.normalize('NFKC').replace(RE_ZERO_WIDTH, '').replace(/\s+/g, '');
+    if (!t) return { error: 'empty' };
+    if (t.length > LIM.code) return { error: 'long' };
+    var m = /SB1\.([A-Za-z0-9_-]+)\.(\d{6})(?!\d)/.exec(t);
+    if (!m) return { error: /SB1\./.test(t) ? 'broken' : /SB\d+\./i.test(t) ? 'version' : 'notfound' };
+    if (checksum(m[1]) !== m[2]) return { error: 'checksum' };
+    var a;
+    try { a = JSON.parse(b64urlDecode(m[1])); } catch (e) { return { error: 'broken' }; }
+    if (!Array.isArray(a) || a.length !== 2 || a[0] !== 1 || !Array.isArray(a[1]) || a[1].length < 1 || a[1].length > LIM.groups) return { error: 'content' };
+    var groups = [];
+    for (var i = 0; i < a[1].length; i++) {
+      var g = a[1][i];
+      if (!Array.isArray(g) || g.length !== 2 || !isName(g[0], LIM.gname) || !Array.isArray(g[1]) || g[1].length > LIM.links) return { error: 'content' };
+      for (var j = 0; j < g[1].length; j++) {
+        var l = g[1][j];
+        if (!Array.isArray(l) || l.length !== 2 || !isName(l[0], LIM.lname) || !isCleanUrl(l[1])) return { error: 'content' };
+      }
+      groups.push(groupFrom(g[0], g[1]));
+    }
+    return { groups: groups, counts: counts(groups) };
+  }
+
+  /* ---- 端末の見分け（iPhone・iPadは最初から1つずつ開く） ---- */
+  function isIOS(ua, touch) { ua = String(ua || ''); return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && (touch || 0) > 1); }
+
+  /* ---- サンプル（投稿カード1枚目と同じ中身） ---- */
+  function sample() {
+    return [
+      groupFrom('毎朝ひらく', [['Gmail', 'https://mail.google.com/'], ['Googleカレンダー', 'https://calendar.google.com/'], ['LINE公式アカウント', 'https://manager.line.biz/'], ['Instagram', 'https://www.instagram.com/'], ['予約の管理画面', 'https://example.com/reserve']]),
+      groupFrom('お金', [['会計ソフト', 'https://example.com/accounting'], ['ネット銀行', 'https://example.com/bank'], ['請求書', 'https://example.com/invoice']]),
+      groupFrom('つくる', [['Canva', 'https://www.canva.com/'], ['Googleドライブ', 'https://drive.google.com/'], ['ChatGPT', 'https://chatgpt.com/'], ['Claude', 'https://claude.ai/']])
+    ];
+  }
+
+  var api = {
+    KEY: KEY, LIM: LIM, URL_ERR: URL_ERR, MOVE_ERR: MOVE_ERR, now: null,
+    clean: clean, cleanMemo: cleanMemo, cpLen: cpLen, today: today, validDate: validDate, dateJa: dateJa, mdJa: mdJa, timeText: timeText,
+    checkName: checkName, normUrl: normUrl, isCleanUrl: isCleanUrl, initial: initial,
+    newId: newId, emptyStore: emptyStore, groupFrom: groupFrom, sanitizeStore: sanitizeStore, putMemo: putMemo, pruneMemos: pruneMemos, pastDates: pastDates, counts: counts, move: move,
+    checksum: checksum, encodeMove: encodeMove, decodeMove: decodeMove, isIOS: isIOS, sample: sample
+  };
+  return api;
+})();
+if (typeof module !== 'undefined') module.exports = SB;
+</script>
+
+<script id="ui">
+var SBUI = (function () {
+  if (typeof document === 'undefined') return null;
+  var app = document.getElementById('app');
+  var uid = 0;
+
+  function h(tag, a, kids) {
+    var e = document.createElement(tag);
+    if (a) Object.keys(a).forEach(function (k) {
+      var v = a[k];
+      if (v == null || v === false) return;
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = v;
+      else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v);
+      else if (v === true) e.setAttribute(k, '');
+      else e.setAttribute(k, v);
+    });
+    (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function copyText(text, done) {
+    function fallback() {
+      var ok = false;
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+        document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+        ok = document.execCommand('copy'); document.body.removeChild(ta);
+      } catch (e) { ok = false; }
+      done(ok);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try { navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); } catch (e) { fallback(); }
+    } else fallback();
+  }
+  function selectAll(ta) { try { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); } catch (e) { } }
+  function fitHeight(ta) { if (ta.isConnected) { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 4) + 'px'; } }
+  function errorsBox(box, errs) {
+    box.textContent = '';
+    if (!errs.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.appendChild(h('strong', { text: '次の点を直してください' }));
+    box.appendChild(h('ul', null, errs.map(function (m) { return h('li', { text: m }); })));
+  }
+  // 画面の中で確かめる枠（アプリ内ブラウザで確認ダイアログが出ない場合に備えて、確認ダイアログは使わない）
+  function askInline(where, text, yesLabel, onYes, danger) {
+    var old = where.querySelector(':scope > .ask-box'); if (old) old.remove();
+    var box = h('div', { class: 'ask-box', role: 'alert' });
+    box.appendChild(h('p', { text: text }));
+    box.appendChild(h('div', { class: 'btns' }, [
+      h('button', { type: 'button', class: danger ? 'danger-btn' : 'primary', text: yesLabel, onclick: function () { box.remove(); onYes(); } }),
+      h('button', { type: 'button', text: 'やめる', onclick: function () { box.remove(); } })
+    ]));
+    where.appendChild(box);
+    if (box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
+    return box;
+  }
+
+  /* ---------------- 端末への保存（Day086・087と同じ考え方） ---------------- */
+  var storageOk = (function () { try { localStorage.setItem(SB.KEY + '-probe', '1'); localStorage.removeItem(SB.KEY + '-probe'); return true; } catch (e) { return false; } })();
+  var storeIssue = ''; // '' ／ 'broken'（読み取れない）／ 'partial'（一部が読み取れない）
+  function backupKeys() {
+    var ks = [];
+    try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(SB.KEY + '-backup-') === 0) ks.push(k); } } catch (e) { }
+    return ks.sort();
+  }
+  // 読み取れなかった保存データの予備。日時つきのキーで新しい3件まで残す（同じ中身は重ねて写さない）
+  // 写せたら true（同じ中身がすでにあるときも true）
+  function backup(raw) {
+    try {
+      var ks = backupKeys();
+      if (ks.length && localStorage.getItem(ks[ks.length - 1]) === raw) return true;
+      localStorage.setItem(SB.KEY + '-backup-' + Date.now(), raw);
+      ks = backupKeys(); while (ks.length > 3) localStorage.removeItem(ks.shift());
+      return true;
+    } catch (e) { return false; }
+  }
+  // 予備に写せなかったときは、元のデータを上書きしないよう保存を止める
+  var saveBlocked = false;
+  function loadStore() {
+    storeIssue = ''; saveBlocked = false;
+    var raw = null;
+    try { raw = localStorage.getItem(SB.KEY); } catch (e) { return SB.emptyStore(); }
+    if (!raw) return SB.emptyStore();
+    var r = null;
+    try { r = SB.sanitizeStore(JSON.parse(raw)); } catch (e) { r = null; }
+    if (!r) { storeIssue = 'broken'; saveBlocked = !backup(raw); return SB.emptyStore(); } // 読み取れなかったデータは消さずに別のキーへ写す
+    if (r.dropped) { storeIssue = 'partial'; saveBlocked = !backup(raw); }
+    return r.store;
+  }
+  function brokenText() {
+    if (saveBlocked) return '保存されたリンクやメモが読み取れず、別に退避することもできませんでした。元のデータを消さないよう、この画面では保存を止めています（ページを閉じると、ここで変えた内容は消えます）。';
+    return storeIssue === 'broken'
+      ? '保存されたリンクとメモが読み取れませんでした。元のデータは消さずに別に残してあります（新しい3回ぶんまで）。新しく登録すると、空の状態から始まります。'
+      : '保存されたリンクやメモの一部が読み取れなかったため、読み取れたものだけを出しています。元のデータは別に残してあります（新しい3回ぶんまで）。';
+  }
+  function save() {
+    if (!storageOk || saveBlocked) return;
+    try { localStorage.setItem(SB.KEY, JSON.stringify(store)); storeIssue = ''; if (brokenBox) brokenBox.hidden = true; }
+    catch (e) { storageOk = false; if (noSaveBox) noSaveBox.hidden = false; }
+  }
+
+  var store = loadStore();
+  var editing = false;      // 「編集する」を押しているあいだ
+  var editTarget = null;    // { kind: 'group'|'link', gid, lid } 名前・アドレスを直している最中のもの
+  var openState = null;     // まとめて開くの途中 { gid, list, i, msg, done }
+  var notice = '';
+  var noSaveBox, brokenBox, noticeBox, groupsEl, pastEl, moveEl, clockD, clockT, memoTa, memoStatus, memoWarn, memoDateEl, memoDay;
+  var IOS = SB.isIOS(navigator.userAgent, navigator.maxTouchPoints || 0);
+
+  function setNotice(t) { notice = t || ''; if (noticeBox) { noticeBox.textContent = notice; noticeBox.hidden = !notice; } }
+  function findGroup(gid) { for (var i = 0; i < store.groups.length; i++) if (store.groups[i].id === gid) return i; return -1; }
+  function findLink(g, lid) { for (var i = 0; i < g.links.length; i++) if (g.links[i].id === lid) return i; return -1; }
+  function field(label, hint, input) { var id = 'f' + (++uid); input.id = id; return h('div', null, [h('label', { class: 'f', for: id }, [label, hint ? h('span', { class: 'hint', text: hint }) : null]), input]); }
+
+  /* ---------------- まとめて開く ---------------- */
+  // noopener を付けると成功しても null が返り、止められたかが分からない。
+  // そこで空のタブを開き、opener を外してからリンク先へ移す（外せなければタブを閉じて「開けなかった」とする）
+  function openOne(l) {
+    var w = null;
+    try { w = window.open('about:blank', '_blank'); } catch (e) { w = null; }
+    if (!w) return false;
+    try { w.opener = null; w.location.replace(l.url); }
+    catch (e) { try { w.close(); } catch (e2) { } return false; }
+    return true;
+  }
+  function openAll(g) {
+    var list = g.links.slice(), n = list.length;
+    if (!n) return;
+    var k = 0;
+    if (IOS) {
+      if (openOne(list[0])) k = 1;
+      openState = { gid: g.id, list: list, i: k, msg: k ? 'iPhone・iPadでは1つずつ開きます（' + k + '/' + n + 'を開きました）' : '開けませんでした。下のボタンを押してください' };
+    } else {
+      while (k < n && openOne(list[k])) k++;
+      if (k === n) openState = { gid: g.id, done: true, msg: n + 'つすべて開きました' };
+      else openState = { gid: g.id, list: list, i: k, msg: 'ブラウザが' + (k + 1) + 'つ目から止めました（' + k + '/' + n + 'を開きました）', blocked: true };
+    }
+    if (openState.i === n) openState = { gid: g.id, done: true, msg: n === 1 ? '開きました' : n + 'つすべて開きました' };
+    renderGroups();
+  }
+  function openNext() {
+    var st = openState; if (!st || st.done) return;
+    var l = st.list[st.i], n = st.list.length;
+    if (!openOne(l)) { st.msg = '「' + l.name + '」を開けませんでした。上のボタンから直接押してください'; renderGroups(); return; }
+    st.i++;
+    if (st.i >= n) openState = { gid: st.gid, done: true, msg: n + 'つすべて開きました' };
+    else st.msg = st.i + '/' + n + 'を開きました';
+    renderGroups();
+  }
+  function openBox(g) {
+    var st = openState; if (!st || st.gid !== g.id) return null;
+    var box = h('div', { class: 'openbox', role: 'status' });
+    box.appendChild(h('p', { text: st.msg }));
+    var bt = [];
+    if (!st.done) {
+      var nx = st.list[st.i];
+      bt.push(h('button', { type: 'button', class: 'primary', text: '次を開く（' + (st.i + 1) + '/' + st.list.length + ' ' + nx.name + '）', onclick: openNext }));
+    }
+    bt.push(h('button', { type: 'button', text: st.done ? '閉じる' : 'やめる', onclick: function () { openState = null; renderGroups(); } }));
+    box.appendChild(h('div', { class: 'btns' }, bt));
+    if (st.blocked && !st.done) box.appendChild(h('p', { class: 'small', text: 'パソコンのChromeでは、アドレスバーの右に出る印から「ポップアップとリダイレクトを常に許可」を選ぶと、次から一度に開けます。' }));
+    return box;
+  }
+
+  /* ---------------- リンクのまとまり ---------------- */
+  function linkForm(g, l, onDone) {
+    // l があれば直す、なければ追加
+    var wrap = h('div', { class: 'addform' });
+    var nIn = h('input', { type: 'text', autocomplete: 'off', placeholder: '例 Gmail' });
+    var uIn = h('input', { type: 'url', autocomplete: 'off', inputmode: 'url', spellcheck: 'false', placeholder: '例 https://mail.google.com/' });
+    if (l) { nIn.value = l.name; uIn.value = l.url; }
+    var err = h('div', { class: 'errors', role: 'alert' }); err.hidden = true;
+    function commit(url) {
+      var errs = [], name = SB.checkName(nIn.value, SB.LIM.lname, 'リンクの名前', errs);
+      if (errs.length) { errorsBox(err, errs); return; }
+      if (l) { l.name = name; l.url = url; }
+      else g.links.push({ id: SB.newId('l'), name: name, url: url });
+      save(); onDone();
+    }
+    function submit() {
+      var errs = [];
+      SB.checkName(nIn.value, SB.LIM.lname, 'リンクの名前', errs);
+      if (!l && g.links.length >= SB.LIM.links) errs.push('1つのまとまりに入れられるリンクは' + SB.LIM.links + '個までです');
+      var r = SB.normUrl(uIn.value);
+      if (r.error) errs.push(SB.URL_ERR[r.error]);
+      errorsBox(err, errs);
+      if (errs.length) return;
+      if (r.added) { askInline(wrap, '「' + r.url + '」として登録しますか（https:// を付けました）', 'この形で登録する', function () { commit(r.url); }); return; }
+      commit(r.url);
+    }
+    wrap.appendChild(h('p', { class: 'f', text: l ? '「' + l.name + '」を直す' : '「' + g.name + '」にリンクを足す' }));
+    wrap.appendChild(field('リンクの名前', '（16字まで）', nIn));
+    wrap.appendChild(field('アドレス', '（http または https）', uIn));
+    wrap.appendChild(err);
+    wrap.appendChild(h('div', { class: 'btns' }, [
+      h('button', { type: 'button', class: 'primary', text: l ? '直す' : '足す', onclick: submit }),
+      l ? h('button', { type: 'button', text: 'やめる', onclick: onDone }) : null
+    ]));
+    return wrap;
+  }
+  function groupNameForm(g, onDone) {
+    var wrap = h('div', { class: 'addform' });
+    var nIn = h('input', { type: 'text', autocomplete: 'off', placeholder: '例 毎朝ひらく' });
+    if (g) nIn.value = g.name;
+    var err = h('div', { class: 'errors', role: 'alert' }); err.hidden = true;
+    function submit() {
+      var errs = [], name = SB.checkName(nIn.value, SB.LIM.gname, 'まとまりの名前', errs);
+      if (!g && store.groups.length >= SB.LIM.groups) errs.push('まとまりは' + SB.LIM.groups + 'つまでです');
+      errorsBox(err, errs); if (errs.length) return;
+      if (g) g.name = name; else store.groups.push({ id: SB.newId('g'), name: name, links: [] });
+      save(); onDone();
+    }
+    wrap.appendChild(field(g ? 'まとまりの名前を変える' : '新しいまとまり', '（12字まで）', nIn));
+    wrap.appendChild(err);
+    wrap.appendChild(h('div', { class: 'btns' }, [
+      h('button', { type: 'button', class: 'primary', text: g ? '変える' : 'まとまりを足す', onclick: submit }),
+      g ? h('button', { type: 'button', text: 'やめる', onclick: onDone }) : null
+    ]));
+    return wrap;
+  }
+  function tool(label, fn, dis, cls) { return h('button', { type: 'button', class: cls || null, text: label, disabled: !!dis, onclick: fn }); }
+
+  function renderGroups() {
+    groupsEl.textContent = '';
+    var head = h('div', { class: 'sec-h' }, [
+      h('h2', { text: 'よく使うリンク' }),
+      store.groups.length ? h('button', { type: 'button', class: editing ? 'primary' : null, text: editing ? '編集を終える' : '編集する', onclick: function () { editing = !editing; editTarget = null; openState = null; renderGroups(); } }) : null
+    ]);
+    groupsEl.appendChild(head);
+    if (!store.groups.length && !editing) {
+      groupsEl.appendChild(h('p', { class: 'empty', text: 'まだリンクがありません。サンプルを入れて形を見るか、空から作ってください。' }));
+      groupsEl.appendChild(h('div', { class: 'btns' }, [
+        storeIssue === 'broken' ? null : h('button', { type: 'button', class: 'primary', text: 'サンプルを入れる', onclick: function () { store.groups = SB.sample(); save(); setNotice('サンプルを入れました。「編集する」から、自分のリンクに直せます。'); renderGroups(); renderMove(); } }),
+        h('button', { type: 'button', text: '空から作る', onclick: function () { editing = true; renderGroups(); } })
+      ]));
+      return;
+    }
+    store.groups.forEach(function (g, gi) {
+      var sec = h('section', { class: 'group', 'aria-label': g.name });
+      var gh = h('div', { class: 'g-head' }, [h('h3', null, [g.name, ' ', h('span', { class: 'gc', text: '（' + g.links.length + '）' })])]);
+      if (!editing && g.links.length) gh.appendChild(h('button', { type: 'button', text: 'まとめて開く（' + g.links.length + '）', onclick: function () { openAll(g); } }));
+      sec.appendChild(gh);
+      if (!editing) {
+        var ob = openBox(g); if (ob) sec.appendChild(ob);
+        if (!g.links.length) sec.appendChild(h('p', { class: 'empty', text: 'リンクがまだありません。「編集する」から足せます。' }));
+        else sec.appendChild(h('div', { class: 'links' }, g.links.map(function (l) {
+          return h('a', { class: 'lk', href: l.url, target: '_blank', rel: 'noopener noreferrer' }, [
+            h('span', { class: 'ic c' + (gi % 6), 'aria-hidden': 'true', text: SB.initial(l.name) }),
+            h('span', { class: 'ln', text: l.name })
+          ]);
+        })));
+      } else {
+        // まとまりの道具
+        var gt = h('div', { class: 'g-tools' });
+        if (editTarget && editTarget.kind === 'group' && editTarget.gid === g.id) gt.appendChild(groupNameForm(g, function () { editTarget = null; renderGroups(); renderMove(); }));
+        else gt.appendChild(h('div', { class: 'tools' }, [
+          tool('上へ', function () { SB.move(store.groups, findGroup(g.id), -1); save(); renderGroups(); }, gi === 0),
+          tool('下へ', function () { SB.move(store.groups, findGroup(g.id), 1); save(); renderGroups(); }, gi === store.groups.length - 1),
+          tool('名前を変える', function () { editTarget = { kind: 'group', gid: g.id }; renderGroups(); }),
+          tool('まとまりを消す', function () {
+            askInline(gt, '「' + g.name + '」と、中のリンク' + g.links.length + '個を消しますか', '消す', function () {
+              var i = findGroup(g.id); if (i >= 0) store.groups.splice(i, 1); save(); renderGroups(); renderMove();
+            }, true);
+          }, false, 'danger-btn')
+        ]));
+        sec.appendChild(gt);
+        var ul = h('ul', { class: 'elinks' });
+        g.links.forEach(function (l, li) {
+          var row = h('li');
+          if (editTarget && editTarget.kind === 'link' && editTarget.lid === l.id) {
+            row.appendChild(linkForm(g, l, function () { editTarget = null; renderGroups(); renderMove(); }));
+          } else {
+            row.appendChild(h('div', { class: 'en', text: l.name }));
+            row.appendChild(h('div', { class: 'eu', text: l.url }));
+            row.appendChild(h('div', { class: 'tools' }, [
+              tool('上へ', function () { SB.move(g.links, findLink(g, l.id), -1); save(); renderGroups(); }, li === 0),
+              tool('下へ', function () { SB.move(g.links, findLink(g, l.id), 1); save(); renderGroups(); }, li === g.links.length - 1),
+              tool('直す', function () { editTarget = { kind: 'link', gid: g.id, lid: l.id }; renderGroups(); }),
+              tool('消す', function () {
+                askInline(row, '「' + l.name + '」を消しますか', '消す', function () {
+                  var i = findLink(g, l.id); if (i >= 0) g.links.splice(i, 1); save(); renderGroups(); renderMove();
+                }, true);
+              }, false, 'danger-btn')
+            ]));
+          }
+          ul.appendChild(row);
+        });
+        sec.appendChild(ul);
+        if (g.links.length < SB.LIM.links) sec.appendChild(linkForm(g, null, function () { renderGroups(); renderMove(); }));
+        else sec.appendChild(h('p', { class: 'small', text: 'このまとまりは' + SB.LIM.links + '個でいっぱいです。' }));
+      }
+      groupsEl.appendChild(sec);
+    });
+    if (editing) {
+      if (store.groups.length < SB.LIM.groups) groupsEl.appendChild(groupNameForm(null, function () { renderGroups(); renderMove(); }));
+      else groupsEl.appendChild(h('p', { class: 'small', text: 'まとまりは' + SB.LIM.groups + 'つでいっぱいです。' }));
+    }
+  }
+
+  /* ---------------- 日付と時刻 ---------------- */
+  function tick() {
+    clockD.textContent = SB.dateJa(SB.today());
+    clockT.textContent = SB.timeText();
+    // 日付が変わったら、新しい日のメモにする（前の日のメモに書き足さない）
+    if (memoDay && memoDay !== SB.today()) switchDay(true);
+  }
+  // 新しい日のメモにする。typing=false（時計・画面に戻ったとき）は、打ちかけの分を前の日に保存してから切り替える。
+  // typing=true（日付が変わってから打ったとき）は前の日に書き足さず、前の日に保存済みの文より後ろに打った分だけを新しい日へ移す
+  function switchDay(saveOld, typing) {
+    var carry = '';
+    if (typing) {
+      if (memoTimer) { clearTimeout(memoTimer); memoTimer = null; }
+      var old = store.memos[memoDay] || '', cur = memoTa.value;
+      carry = cur.indexOf(old) === 0 ? cur.slice(old.length).replace(/^\n+/, '') : '';
+    } else if (saveOld) saveMemoNow();
+    memoDay = SB.today();
+    memoTa.value = (store.memos[memoDay] || '') + carry;
+    memoDateEl.textContent = SB.mdJa(memoDay);
+    memoStatus.className = 'small';
+    memoStatus.textContent = '日付が変わったので、新しい日のメモにしました。前の日のメモは「前の日のメモ」に残っています。';
+    renderPast();
+    fitHeight(memoTa);
+    if (carry) memoTimer = setTimeout(saveMemoNow, 500);
+  }
+
+  /* ---------------- 今日のメモ ---------------- */
+  var memoTimer = null;
+  function saveMemoNow() {
+    if (memoTimer) { clearTimeout(memoTimer); memoTimer = null; } else return;
+    var r = SB.putMemo(store, memoDay, memoTa.value);
+    if (r.error) { memoStatus.textContent = r.error; memoStatus.className = 'okmsg errtext'; return; }
+    save();
+    memoStatus.className = 'small';
+    memoStatus.textContent = storageOk ? '保存しました ' + SB.timeText() : 'この端末では保存できません。ページを閉じるとメモは消えます';
+    if (r.removed.length) setNotice('メモは新しい30日分だけ残します。' + r.removed.map(SB.mdJa).join('・') + 'のメモを消しました。');
+    renderPast();
+  }
+  function onMemoInput() {
+    if (memoDay !== SB.today()) { switchDay(false, true); return; }
+    if (memoTimer) clearTimeout(memoTimer);
+    memoTimer = setTimeout(saveMemoNow, 500);
+    memoStatus.className = 'small'; memoStatus.textContent = '入力中…';
+    fitHeight(memoTa);
+  }
+
+  /* ---------------- 前の日のメモ ---------------- */
+  var openPast = Object.create(null);
+  function renderPast() {
+    pastEl.textContent = '';
+    pastEl.appendChild(h('div', { class: 'sec-h' }, [h('h2', { text: '前の日のメモ' }), h('span', { class: 'small', text: '新しい30日分まで' })]));
+    var ds = SB.pastDates(store, memoDay);
+    // 消える前に知らせる: 30日分たまっていて今日のメモがまだないとき、今日のメモを保存するといちばん古い日が消える
+    if (memoWarn) {
+      var full = !store.memos[memoDay] && ds.length >= SB.LIM.days;
+      memoWarn.hidden = !full;
+      memoWarn.textContent = full ? '今日のメモを保存すると、いちばん古い' + SB.mdJa(ds[ds.length - 1]) + 'のメモが消えます（新しい30日分だけ残します）。残したいときは、先に「前の日のメモ」からコピーしてください。' : '';
+    }
+    if (!ds.length) { pastEl.appendChild(h('p', { class: 'empty', text: 'まだありません。今日のメモは、明日になるとここに移ります。' })); return; }
+    var ul = h('ul', { class: 'past' });
+    ds.forEach(function (d) {
+      var t = store.memos[d], li = h('li');
+      var first = t.split('\n').filter(function (x) { return x.trim(); })[0] || '';
+      li.appendChild(h('button', { type: 'button', class: 'pt', 'aria-expanded': openPast[d] ? 'true' : 'false', onclick: function () { openPast[d] = !openPast[d]; renderPast(); } }, [h('b', { text: SB.mdJa(d) }), h('span', { text: first })]));
+      if (openPast[d]) {
+        li.appendChild(h('pre', { text: t }));
+        var msg = h('p', { class: 'okmsg', role: 'status' });
+        li.appendChild(h('div', { class: 'btns' }, [
+          h('button', { type: 'button', text: 'コピー', onclick: function () { copyText(t, function (ok) { msg.textContent = ok ? 'コピーしました' : 'コピーできませんでした。上の文を長押ししてコピーしてください'; }); } }),
+          h('button', { type: 'button', class: 'danger-btn', text: 'この日のメモを消す', onclick: function () {
+            askInline(li, SB.mdJa(d) + 'のメモを消しますか', '消す', function () { delete store.memos[d]; delete openPast[d]; save(); renderPast(); }, true);
+          } })
+        ]));
+        li.appendChild(msg);
+      }
+      ul.appendChild(li);
+    });
+    pastEl.appendChild(ul);
+  }
+
+  /* ---------------- 別の端末へ移す ---------------- */
+  function renderMove() {
+    moveEl.textContent = '';
+    moveEl.appendChild(h('h2', { text: '別の端末へ移す' }));
+    moveEl.appendChild(h('p', { class: 'small', text: 'まとまりとリンクを、英数字の文字にして運びます（メモは移りません）。LINEの自分あてやメールで送り、別の端末で貼ってください。' }));
+    var c = SB.counts(store.groups);
+    var out = h('textarea', { readonly: true, rows: 3, class: 'codebox', 'aria-label': '移すための文字' }); out.hidden = true;
+    var msg = h('p', { class: 'okmsg', role: 'status' });
+    var code = '';
+    var cpBtn = h('button', { type: 'button', class: 'primary', text: '設定を文字でコピー', disabled: !c.g, onclick: function () {
+      code = SB.encodeMove(store.groups); out.value = code; out.hidden = false; fitHeight(out);
+      copyText(code, function (ok) {
+        if (ok) msg.textContent = 'コピーしました（まとまり' + c.g + '・リンク' + c.l + '・' + code.length.toLocaleString('ja-JP') + '文字）。別の端末の「文字を貼って読み込む」に貼ってください';
+        else { msg.textContent = 'コピーできませんでした。上の文字を長押しして、コピーしてください'; selectAll(out); }
+      });
+    } });
+    var shBtn = h('button', { type: 'button', text: '共有', disabled: !c.g, onclick: function () {
+      code = SB.encodeMove(store.groups); out.value = code; out.hidden = false; fitHeight(out);
+      var p; try { p = navigator.share({ text: code }); } catch (e) { msg.textContent = '共有できませんでした。「設定を文字でコピー」を使ってください'; return; }
+      if (p && p.catch) p.catch(function (e) { if (!e || e.name !== 'AbortError') msg.textContent = '共有できませんでした。「設定を文字でコピー」を使ってください'; });
+    } });
+    shBtn.hidden = typeof navigator.share !== 'function';
+    moveEl.appendChild(h('div', { class: 'btns' }, [cpBtn, shBtn]));
+    moveEl.appendChild(out); moveEl.appendChild(msg);
+
+    var inTa = h('textarea', { rows: 3, class: 'codebox', autocomplete: 'off', spellcheck: 'false', placeholder: 'SB1. で始まる文字を貼る' });
+    var err = h('div', { class: 'errors', role: 'alert' }); err.hidden = true;
+    var area = h('div');
+    moveEl.appendChild(field('文字を貼って読み込む', '', inTa));
+    moveEl.appendChild(err);
+    moveEl.appendChild(h('div', { class: 'btns' }, [h('button', { type: 'button', text: '読み込む', onclick: function () {
+      var r = SB.decodeMove(inTa.value);
+      if (r.error) { errorsBox(err, [SB.MOVE_ERR[r.error]]); return; }
+      errorsBox(err, []);
+      var now = SB.counts(store.groups);
+      askInline(area, '読み込む中身: まとまり' + r.counts.g + '・リンク' + r.counts.l + '\n' + (now.g ? 'いまの設定（まとまり' + now.g + '・リンク' + now.l + '）と入れ替えますか。メモはそのまま残ります' : 'この中身を入れますか'), now.g ? '入れ替える' : '入れる', function () {
+        store.groups = r.groups; save(); editing = false; editTarget = null; openState = null;
+        inTa.value = '';
+        setNotice('読み込みました: まとまり' + r.counts.g + '・リンク' + r.counts.l);
+        renderGroups(); renderMove();
+        if (noticeBox.scrollIntoView) noticeBox.scrollIntoView({ block: 'nearest' });
+      });
+    } })]));
+    moveEl.appendChild(area);
+  }
+
+  /* ---------------- 画面 ---------------- */
+  function render() {
+    app.textContent = '';
+    app.appendChild(h('h1', { text: '仕事をはじめる1画面' }));
+    app.appendChild(h('p', { class: 'lead', text: 'よく使うツールのリンクを用途ごとにまとめて、ボタンで並べます。まとまりごとに続けて開けます（ブラウザに止められたら、ボタンで1つずつ）。同じ画面に今日のメモ。' }));
+    noticeBox = h('div', { class: 'notice', role: 'status' }); noticeBox.hidden = !notice; noticeBox.textContent = notice;
+    noSaveBox = h('div', { class: 'errors', role: 'alert', text: 'この端末ではリンクとメモを保存できません。ページを閉じると消えます。' }); noSaveBox.hidden = storageOk;
+    brokenBox = h('div', { class: 'errors', text: brokenText() });
+    brokenBox.hidden = !storeIssue;
+    [noticeBox, noSaveBox, brokenBox].forEach(function (e) { app.appendChild(e); });
+
+    var layout = h('div', { class: 'layout' }), left = h('div', { class: 'col' }), right = h('div', { class: 'col' });
+    layout.appendChild(left); layout.appendChild(right); app.appendChild(layout);
+
+    var clock = h('section', { class: 'panel clock o-clock', 'aria-label': '今日の日付と時刻' });
+    clockD = h('p', { class: 'cd' }); clockT = h('p', { class: 'ct' });
+    clock.appendChild(clockD); clock.appendChild(clockT);
+
+    var memo = h('section', { class: 'panel o-memo' });
+    memoDay = SB.today();
+    memoDateEl = h('span', { class: 'small', text: SB.mdJa(memoDay) });
+    memoTa = h('textarea', { class: 'memo', rows: 3, id: 'memo', 'aria-label': '今日のメモ', placeholder: '思いついたこと・今日やることを書いておく' });
+    memoTa.value = store.memos[memoDay] || '';
+    memoTa.addEventListener('input', onMemoInput);
+    memoTa.addEventListener('blur', saveMemoNow);
+    memoTa.addEventListener('focus', tick); // 打ち始める前に日付を確かめる（スリープから戻った直後など）
+    memoStatus = h('p', { class: 'small', role: 'status' });
+    memoWarn = h('p', { class: 'small', role: 'status' }); memoWarn.hidden = true;
+    memo.appendChild(h('div', { class: 'sec-h' }, [h('h2', { text: '今日のメモ' }), memoDateEl]));
+    memo.appendChild(memoTa); memo.appendChild(memoStatus); memo.appendChild(memoWarn);
+
+    groupsEl = h('section', { class: 'panel o-groups' });
+    pastEl = h('section', { class: 'panel o-past' });
+    moveEl = h('section', { class: 'panel o-move' });
+    left.appendChild(groupsEl); left.appendChild(moveEl);
+    right.appendChild(clock); right.appendChild(memo); right.appendChild(pastEl);
+
+    app.appendChild(h('ul', { class: 'notes' }, [
+      h('li', { text: 'リンクとメモは、この端末のブラウザにだけ保存されます。ブラウザのデータを消すと消えます。' }),
+      h('li', { text: '別の端末で使うときは「設定を文字でコピー」で移してください（メモは移りません）。大事なメモは、別の場所にも残してください。' }),
+      h('li', { text: 'ログインは、リンクの先のそれぞれのサイトで行います。このページはパスワードを扱いません。' }),
+      h('li', { text: 'ブラウザを開いたときにこの画面を出したいときは、ブラウザの設定（起動時に開くページ）に、このページのアドレスを登録してください。' })
+    ]));
+
+    tick(); renderGroups(); renderPast(); renderMove();
+    fitHeight(memoTa);
+  }
+
+  render();
+  setInterval(tick, 15000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); else saveMemoNow(); });
+  window.addEventListener('focus', tick);
+  window.addEventListener('pageshow', tick);
+  window.addEventListener('pagehide', saveMemoNow);
+  // 別のタブで変わったら読み直す（打っている途中のメモは上書きしない）
+  window.addEventListener('storage', function (e) {
+    if (e.key !== SB.KEY) return;
+    var typing = document.activeElement === memoTa || memoTimer;
+    store = loadStore();
+    brokenBox.textContent = brokenText(); brokenBox.hidden = !storeIssue;
+    if (!typing) memoTa.value = store.memos[memoDay] || '';
+    editTarget = null; openState = null;
+    renderGroups(); renderPast(); renderMove();
+  });
+  return { get store() { return store; }, render: render, tick: tick, saveMemoNow: saveMemoNow };
+})();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "b4c9f7e78daf4edb84ef52b88633f649"}'></script>
+</body>
+</html>
